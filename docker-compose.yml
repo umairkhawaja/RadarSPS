@@ -2,6 +2,12 @@ version: "3"
 services:
   project:
     image: sps
+    container_name: sps_container
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
     build:
       context: .
       dockerfile: ./Dockerfile
@@ -18,5 +24,6 @@ services:
     runtime: nvidia
     environment:
       - NVIDIA_DRIVER_CAPABILITIES=all
+      - NVIDIA_VISIBLE_DEVICES=all
       - ROS_MASTER_URI=$ROS_MASTER_URI
     working_dir: /sps

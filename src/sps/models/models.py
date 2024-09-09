@@ -31,11 +31,12 @@ class SPSModel(nn.Module):
 
 
 class SPSNet(pl.LightningModule):
-    def __init__(self, hparams: dict, data_size = 0, save_vis = False):
+    def __init__(self, hparams: dict, data_size = 0, save_vis = False, exp_name=None):
         super().__init__()
         self.save_hyperparameters(hparams)
         self.model = SPSModel(hparams['MODEL']['VOXEL_SIZE'])
         self.save_vis = save_vis
+        self.exp_name = exp_name
 
         self.data_dir = str(os.environ.get("DATA"))
         self.test_seq = hparams["DATA"]["SPLIT"]["TEST"]
@@ -47,9 +48,10 @@ class SPSNet(pl.LightningModule):
         self.predict_loss = []
         self.predict_r2 = []
         self.dIoU = []
-        self.precision = [] 
+        self.precisions = []
         self.recall = [] 
         self.F1 = []
+        self.accuracies = []
 
         self.data_size = data_size
 
@@ -95,13 +97,13 @@ class SPSNet(pl.LightningModule):
 
         ### -> mIoU start
         pred = np.where(scores[scan_indices].cpu().view(-1) < self.epsilon, 0, 1)
-        gt   = np.where(      scan_gt_labels.cpu().view(-1) < self.epsilon, 0, 1)
-
+        gt   = np.where(scan_gt_labels.cpu().view(-1) < self.epsilon, 0, 1)
         precision, recall, f1, accuracy, dIoU = util.calculate_metrics(gt, pred)
         self.dIoU.append(dIoU)
-        self.precision.append(precision)
+        self.precisions.append(precision)
         self.recall.append(recall)
         self.F1.append(f1)
+        self.accuracies.append(accuracy)
         ### <- mIoU ends
 
 
@@ -115,12 +117,14 @@ class SPSNet(pl.LightningModule):
         s_path = os.path.join(
             self.data_dir,
             'predictions',
+            self.exp_name,
             self.test_seq[0],
             'scans'
         )
         m_path = os.path.join(
             self.data_dir,
             'predictions',
+            self.exp_name,
             self.test_seq[0],
             'maps'
         )

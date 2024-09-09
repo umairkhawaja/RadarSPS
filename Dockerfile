@@ -2,18 +2,18 @@ FROM nvidia/cudagl:11.3.0-devel-ubuntu20.04
 
 ##############################################
 # You should modify this to match your GPU compute capability
-ENV TORCH_CUDA_ARCH_LIST="6.0 6.1 6.2 7.0 7.2 7.5 8.0 8.6"
+ENV TORCH_CUDA_ARCH_LIST "6.0 6.1 6.2 7.0 7.2 7.5 8.0 8.6"
 
-ENV TORCH_NVCC_FLAGS="-Xfatbin -compress-all"
+ENV TORCH_NVCC_FLAGS "-Xfatbin -compress-all"
 
 # For faster build, use more jobs.
-ENV MAX_JOBS=6
+ENV MAX_JOBS 6
 
 ENV ROS_DISTRO noetic
 
-ENV PROJECT=/sps
+ENV PROJECT /sps
 
-ENV DATA=$PROJECT/data
+ENV DATA $PROJECT/data
 
 ##############################################
 # Minimal ubuntu setup
@@ -60,7 +60,7 @@ RUN apt update && apt install -y --no-install-recommends nano build-essential \
     && apt clean && rm -rf /var/lib/apt/lists/*
 
 #Set numpy version to 1.20.1 as higher version cause issues in ros-numpy package 
-RUN pip3 install tensorboard install --upgrade numpy==1.20.1 install scipy
+RUN pip3 install tensorboard numpy==1.20.1 scipy
 
 ##############################################
 # Install project related dependencies

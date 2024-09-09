@@ -49,10 +49,13 @@ class BacchusModule(LightningDataModule):
         map_str = self.cfg["TRAIN"]["MAP"]
 
         # Load map data points, data structure: [x,y,z,label]
-        map_pth = os.path.join(self.root_dir, "maps", map_str)
+        # map_pth = os.path.join(self.root_dir, "maps", map_str) # If we want to use individual maps
+        map_pth = os.path.join(self.root_dir, map_str) # Just use the concatenated map of boston seaport
         filename, file_extension = os.path.splitext(map_pth)
-        self.map = np.load(map_pth) if file_extension == '.npy' else np.loadtxt(map_pth)
+        self.map = np.load(map_pth) if file_extension == '.npy' else np.loadtxt(map_pth, skiprows=1)
         self.map = self.map[:,:4]
+        # Need to change from stability = 1 to stability = 0
+        self.map[:,3] = 1 - self.map[:,3]
 
     def cash_scans(self, scans_pth, poses_pth, map_tr_pths):
         scans_data = []
@@ -62,7 +65,8 @@ class BacchusModule(LightningDataModule):
             scan_data = np.load(scan_pth)
             pose_data = np.loadtxt(pose_pth, delimiter=',')
             # Load map transformation 
-            map_transform = np.loadtxt(map_tr_pth, delimiter=',')
+            # map_transform = np.loadtxt(map_tr_pth, delimiter=',')
+            map_transform = np.eye(4) # For Radar NuScenes we have aligned them using GPS poses
 
             # Transform the scan to the map coordinates
             # (1) First we transform the scan using the pose from SLAM system
@@ -72,7 +76,7 @@ class BacchusModule(LightningDataModule):
 
             scans_data.append(scan_data)
 
-        return scans_data
+        return scans_data # [scans_data[0]] # scans_data[:3]
 
 
     def get_scans_poses(self, seqs):

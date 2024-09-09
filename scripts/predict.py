@@ -54,7 +54,7 @@ def main(weights, sequence, config):
     data.setup()
 
     ckpt = torch.load(weights)
-    model = models.SPSNet(cfg, len(data.test_scans))
+    model = models.SPSNet(cfg, len(data.test_scans), save_vis=True, exp_name=cfg['EXPERIMENT']['ID'])
     model.load_state_dict(ckpt["state_dict"])
     model = model.cuda()
     model.eval()
@@ -71,9 +71,10 @@ def main(weights, sequence, config):
         "Loss": model.predict_loss,
         "R2": model.predict_r2,
         "dIoU": model.dIoU,
-        "Precision": model.precision,
+        "Precision": model.precisions,
         "Recall": model.recall,
-        "F1": model.F1
+        "F1": model.F1,
+        "Accuracy": model.accuracies
     }
 
     print('\n########## Inference Metrics ##########')

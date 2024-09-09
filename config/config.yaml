@@ -1,29 +1,28 @@
 EXPERIMENT:
-  ID: BLT
+  ID: NUSCENES_TEST_0162_0.5
 
 ##Data
 DATA:
   SHUFFLE: True
-  NUM_WORKER: 8
+  NUM_WORKER: 4
   SPLIT:
     TRAIN:
-      - '20220420'
-      - '20220601'
+      - 'scene-0162'
     VAL:
-      - '20220608'
+      - 'scene-0162'
     TEST:
-      - '20220629'
+      - 'scene-0162'
 
 ##Training
 TRAIN:
-  MAP: base_map.asc.npy
+  MAP: scene-0162.asc # base_map.asc
   MAX_EPOCH: 80
-  LR: 0.00007
-  LR_EPOCH: 1
+  LR: 0.001 # 0.00007
+  LR_EPOCH: 100
   LR_DECAY: 0.99
   WEIGHT_DECAY: 0.0001
-  BATCH_SIZE: 2
-  AUGMENTATION: True
+  BATCH_SIZE: 1
+  AUGMENTATION: False
 
 ##Network
 MODEL:
@@ -31,4 +30,4 @@ MODEL:
 
 ##Unstable points filter 
 FILTER:
-  THRESHOLD: 0.84
+  THRESHOLD: 0.5 # 0.84
