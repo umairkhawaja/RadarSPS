@@ -1,5 +1,41 @@
+# EXPERIMENT:
+#   ID: train_scene162
+
+# ##Data
+# DATA:
+#   SHUFFLE: True
+#   NUM_WORKER: 4
+#   SPLIT:
+#     TRAIN:
+#       - 'scene-0665'
+#       - 'scene-0218'
+#       - 'scene-0219'
+#     VAL:
+#       - 'scene-0162'
+#     TEST:
+#       - 'scene-0162'
+
+# ##Training
+# TRAIN:
+#   MAP: maps/scene-0162.asc # base_map.asc
+#   MAX_EPOCH: 100
+#   LR: 0.001 # 0.00007
+#   LR_EPOCH: 100
+#   LR_DECAY: 0.99
+#   WEIGHT_DECAY: 0.0001
+#   BATCH_SIZE: 1
+#   AUGMENTATION: False
+
+# ##Network
+# MODEL:
+#   VOXEL_SIZE: 0.1 # Used for discretization in x,y,z when creating a sparse tensor 
+
+# ##Unstable points filter 
+# FILTER:
+#   THRESHOLD: 0.84
+
 EXPERIMENT:
-  ID: NUSCENES_TEST_0162_0.5
+  ID: NUSCENES_TEST_0162_FEATURES
 
 ##Data
 DATA:
@@ -8,6 +44,7 @@ DATA:
   SPLIT:
     TRAIN:
       - 'scene-0162'
+
     VAL:
       - 'scene-0162'
     TEST:
@@ -15,8 +52,8 @@ DATA:
 
 ##Training
 TRAIN:
-  MAP: scene-0162.asc # base_map.asc
-  MAX_EPOCH: 80
+  MAP: maps/scene-0162.asc # base_map.asc
+  MAX_EPOCH: 100
   LR: 0.001 # 0.00007
   LR_EPOCH: 100
   LR_DECAY: 0.99
@@ -27,7 +64,9 @@ TRAIN:
 ##Network
 MODEL:
   VOXEL_SIZE: 0.1 # Used for discretization in x,y,z when creating a sparse tensor 
+  RADAR_FEATURES: True
+
 
 ##Unstable points filter 
 FILTER:
-  THRESHOLD: 0.5 # 0.84
+  THRESHOLD: 0.84

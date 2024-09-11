@@ -11,15 +11,19 @@ from sps.models.MinkowskiEngine.customminkunet import CustomMinkUNet
 from torchmetrics import R2Score
 
 class SPSModel(nn.Module):
-    def __init__(self, voxel_size: float):
+    def __init__(self, voxel_size: float, in_channels=1):
         super().__init__()
         self.quantization = torch.Tensor([1.0, voxel_size, voxel_size, voxel_size, 1.0])
-        self.MinkUNet = CustomMinkUNet(in_channels=1, out_channels=1, D=4)
+        self.MinkUNet = CustomMinkUNet(in_channels=in_channels, out_channels=1, D=4)
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, coordinates: torch.Tensor):
+    def forward(self, coordinates: torch.Tensor, radar_features: torch.Tensor = None):
         coordinates = torch.div(coordinates, self.quantization.type_as(coordinates))
-        features = 0.5 * torch.ones(len(coordinates), 1).type_as(coordinates)
+        time_features = 0.5 * torch.ones(len(coordinates), 1).type_as(coordinates)
+        if radar_features:
+            features = torch.hstack([time_features, radar_features])
+        else:
+            features = time_features
 
         tensor_field = ME.TensorField(features=features, coordinates=coordinates.type_as(features))
         sparse_tensor = tensor_field.sparse()
@@ -34,7 +38,8 @@ class SPSNet(pl.LightningModule):
     def __init__(self, hparams: dict, data_size = 0, save_vis = False, exp_name=None):
         super().__init__()
         self.save_hyperparameters(hparams)
-        self.model = SPSModel(hparams['MODEL']['VOXEL_SIZE'])
+        in_channels = 4 if hparams['MODEL']['RADAR_FEATURES'] else 1
+        self.model = SPSModel(hparams['MODEL']['VOXEL_SIZE'], in_channels)
         self.save_vis = save_vis
         self.exp_name = exp_name
 
@@ -56,16 +61,31 @@ class SPSNet(pl.LightningModule):
         self.data_size = data_size
 
     def forward(self, batch):
-        coordinates = batch[:, :5].reshape(-1, 5)
-        scores = self.model(coordinates)
+        coordinates, features, scores = None, None, None
+
+        if self.hparams['MODEL']['RADAR_FEATURES']:
+            coordinates, features = batch
+            coordinates = coordinates[:, :5].reshape(-1, 5)
+            features = features[:,:3].reshape(-1, 3)
+            scores = self.model(coordinates, features)
+        else:
+            coordinates = batch[:, :5].reshape(-1, 5)
+            scores = self.model(coordinates)
         # torch.cuda.empty_cache()
         return scores
 
     def common_step(self, batch):
+        if self.hparams['MODEL']['RADAR_FEATURES']:
+            batch, radar_features = batch
+
         coordinates = batch[:, :5].reshape(-1, 5)
         gt_labels = batch[:, 5].reshape(-1)
         scan_indices = np.where(coordinates[:, 4].cpu().data.numpy() == 1)[0]
-        scores = self.model(coordinates)
+        if self.hparams['MODEL']['RADAR_FEATURES']:
+            scores = self.model(coordinates, radar_features)
+        else:
+            scores = self.model(coordinates)
+
         loss = self.loss(scores[scan_indices], gt_labels[scan_indices])
         r2 = self.r2score(scores[scan_indices], gt_labels[scan_indices])
         torch.cuda.empty_cache()
@@ -84,10 +104,17 @@ class SPSNet(pl.LightningModule):
         return {"val_loss": loss, "val_r2": r2}
 
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
+        if self.hparams['MODEL']['RADAR_FEATURES']:
+            batch, radar_features = batch
+
         coordinates = batch[:, :5].reshape(-1, 5)
         gt_labels = batch[:, 5].reshape(-1)
         scan_indices = np.where(coordinates[:, 4].cpu().data.numpy() == 1)[0]
-        scores = self.model(coordinates)
+        if self.hparams['MODEL']['RADAR_FEATURES']:
+            scores = self.model(coordinates, radar_features)
+        else:
+            scores = self.model(coordinates)
+
         scan_gt_labels = gt_labels[scan_indices]
         loss = self.loss(scores[scan_indices],  scan_gt_labels)
         r2 = self.r2score(scores[scan_indices], scan_gt_labels)
@@ -150,8 +177,11 @@ class SPSNet(pl.LightningModule):
             scan_data = np.column_stack((scan_points, scan_labels_gt, scan_labels_hat))
             map_data = np.column_stack((map_points, map_labels_gt))
 
-            scan_pth = os.path.join(s_path, str(batch_idx) + '_' + str(b) + '.npy')
-            map_pth  = os.path.join(m_path, str(batch_idx) + '_' + str(b) + '.npy')
+            # scan_pth = os.path.join(s_path, str(batch_idx) + '_' + str(b) + '.npy')
+            # map_pth  = os.path.join(m_path, str(batch_idx) + '_' + str(b) + '.npy')
+            
+            scan_pth = os.path.join(s_path, str(batch_idx)+'.npy')
+            map_pth  = os.path.join(m_path, str(batch_idx)+'.npy')
             np.save(scan_pth, scan_data)
             np.save(map_pth, map_data)
 

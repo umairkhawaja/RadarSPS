@@ -55,6 +55,7 @@ def main(config):
         accelerator="gpu",
         devices=1,
         logger=[tb_logger],
+        log_every_n_steps=1,
         max_epochs=cfg["TRAIN"]["MAX_EPOCH"],
         callbacks=[
             lr_monitor,

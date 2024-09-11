@@ -55,7 +55,7 @@ class MinkUNetBase(ResNetBase):
         self.conv0p1s1 = ME.MinkowskiConvolution(
             in_channels,
             self.inplanes,
-            kernel_size=self.m_space_n_time(5, 1),
+            kernel_size=self.m_space_n_time(5, in_channels),
             dimension=D,
         )
 
@@ -64,8 +64,8 @@ class MinkUNetBase(ResNetBase):
         self.conv1p1s2 = ME.MinkowskiConvolution(
             self.inplanes,
             self.inplanes,
-            kernel_size=self.m_space_n_time(2, 1),
-            stride=self.m_space_n_time(2, 1),
+            kernel_size=self.m_space_n_time(2, in_channels),
+            stride=self.m_space_n_time(2, in_channels),
             dimension=D,
         )
         self.bn1 = ME.MinkowskiBatchNorm(self.inplanes)
@@ -75,8 +75,8 @@ class MinkUNetBase(ResNetBase):
         self.conv2p2s2 = ME.MinkowskiConvolution(
             self.inplanes,
             self.inplanes,
-            kernel_size=self.m_space_n_time(2, 1),
-            stride=self.m_space_n_time(2, 1),
+            kernel_size=self.m_space_n_time(2, in_channels),
+            stride=self.m_space_n_time(2, in_channels),
             dimension=D,
         )
         self.bn2 = ME.MinkowskiBatchNorm(self.inplanes)
@@ -86,8 +86,8 @@ class MinkUNetBase(ResNetBase):
         self.conv3p4s2 = ME.MinkowskiConvolution(
             self.inplanes,
             self.inplanes,
-            kernel_size=self.m_space_n_time(2, 1),
-            stride=self.m_space_n_time(2, 1),
+            kernel_size=self.m_space_n_time(2, in_channels),
+            stride=self.m_space_n_time(2, in_channels),
             dimension=D,
         )
 
@@ -97,8 +97,8 @@ class MinkUNetBase(ResNetBase):
         self.conv4p8s2 = ME.MinkowskiConvolution(
             self.inplanes,
             self.inplanes,
-            kernel_size=self.m_space_n_time(2, 1),
-            stride=self.m_space_n_time(2, 1),
+            kernel_size=self.m_space_n_time(2, in_channels),
+            stride=self.m_space_n_time(2, in_channels),
             dimension=D,
         )
         self.bn4 = ME.MinkowskiBatchNorm(self.inplanes)
@@ -107,8 +107,8 @@ class MinkUNetBase(ResNetBase):
         self.convtr4p16s2 = ME.MinkowskiConvolutionTranspose(
             self.inplanes,
             self.PLANES[4],
-            kernel_size=self.m_space_n_time(2, 1),
-            stride=self.m_space_n_time(2, 1),
+            kernel_size=self.m_space_n_time(2, in_channels),
+            stride=self.m_space_n_time(2, in_channels),
             dimension=D,
         )
         self.bntr4 = ME.MinkowskiBatchNorm(self.PLANES[4])
@@ -118,8 +118,8 @@ class MinkUNetBase(ResNetBase):
         self.convtr5p8s2 = ME.MinkowskiConvolutionTranspose(
             self.inplanes,
             self.PLANES[5],
-            kernel_size=self.m_space_n_time(2, 1),
-            stride=self.m_space_n_time(2, 1),
+            kernel_size=self.m_space_n_time(2, in_channels),
+            stride=self.m_space_n_time(2, in_channels),
             dimension=D,
         )
         self.bntr5 = ME.MinkowskiBatchNorm(self.PLANES[5])
@@ -129,8 +129,8 @@ class MinkUNetBase(ResNetBase):
         self.convtr6p4s2 = ME.MinkowskiConvolutionTranspose(
             self.inplanes,
             self.PLANES[6],
-            kernel_size=self.m_space_n_time(2, 1),
-            stride=self.m_space_n_time(2, 1),
+            kernel_size=self.m_space_n_time(2, in_channels),
+            stride=self.m_space_n_time(2, in_channels),
             dimension=D,
         )
         self.bntr6 = ME.MinkowskiBatchNorm(self.PLANES[6])
@@ -140,8 +140,8 @@ class MinkUNetBase(ResNetBase):
         self.convtr7p2s2 = ME.MinkowskiConvolutionTranspose(
             self.inplanes,
             self.PLANES[7],
-            kernel_size=self.m_space_n_time(2, 1),
-            stride=self.m_space_n_time(2, 1),
+            kernel_size=self.m_space_n_time(2, in_channels),
+            stride=self.m_space_n_time(2, in_channels),
             dimension=D,
         )
         self.bntr7 = ME.MinkowskiBatchNorm(self.PLANES[7])

@@ -6,11 +6,11 @@ import time
 import torch
 import numpy as np
 
-import rospy
-import ros_numpy
+# import rospy
+# import ros_numpy
 
-from tf.transformations import quaternion_matrix
-from sensor_msgs.msg import PointCloud2, PointField
+# from tf.transformations import quaternion_matrix
+# from sensor_msgs.msg import PointCloud2, PointField
 
 import sps.models.models as models
 
