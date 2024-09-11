@@ -35,7 +35,7 @@
 #   THRESHOLD: 0.84
 
 EXPERIMENT:
-  ID: NUSCENES_TEST_0218_MAP-0162
+  ID: NUSCENES_TEST_0218_MAP-0162_map-parsing
 
 ##Data
 DATA:
@@ -50,9 +50,18 @@ DATA:
     TEST:
       - 'scene-0218'
 
+  MAPS:
+    TRAIN:
+      - 'scene-0162'
+    VAL:
+      - 'scene-0162'
+    TEST:
+      - 'scene-0162'
+
+
 ##Training
 TRAIN:
-  MAP: maps/scene-0162.asc # base_map.asc
+  MAP: ''
   MAX_EPOCH: 100
   LR: 0.001 # 0.00007
   LR_EPOCH: 100

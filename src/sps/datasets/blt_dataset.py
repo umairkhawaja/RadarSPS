@@ -28,44 +28,78 @@ class BacchusModule(LightningDataModule):
         self.cfg = cfg
         self.test = test
         self.root_dir = str(os.environ.get("DATA"))
-       
+        self.map_path = cfg['TRAIN']['MAP']
+        self.use_single_map = False
+        self.maps = {}
+
+
 
         if self.test:
             print('Loading testing data ...')
             test_seqs = self.cfg['DATA']['SPLIT']['TEST']
+            test_map_seqs = self.cfg['DATA']['MAPS']['TEST']
             test_scans, test_poses, test_labels, test_map_tr = self.get_scans_poses(test_seqs)
             self.test_scans = self.cash_scans(test_scans, test_poses, test_labels, test_map_tr)
+            self.load_maps(test_map_seqs)
+
         else:
             print('Loading training data ...')
             train_seqs = self.cfg['DATA']['SPLIT']['TRAIN']
+            train_map_seqs = self.cfg['DATA']['MAPS']['TRAIN']
+
             train_scans, train_poses, train_labels, train_map_tr = self.get_scans_poses(train_seqs)
             self.train_scans = self.cash_scans(train_scans, train_poses, train_labels, train_map_tr)
 
             print('Loading validating data ...')
             val_seqs = self.cfg['DATA']['SPLIT']['VAL']
+            val_map_seqs = self.cfg['DATA']['MAPS']['VAL']
+
             val_scans, val_poses, val_labels, val_map_tr = self.get_scans_poses(val_seqs)
             self.val_scans = self.cash_scans(val_scans, val_poses, val_labels, val_map_tr)
 
-        map_str = self.cfg["TRAIN"]["MAP"]
+            self.load_maps(train_map_seqs + val_map_seqs)
 
+        # map_str = self.cfg["TRAIN"]["MAP"]
         # Load map data points, data structure: [x,y,z,label]
         # map_pth = os.path.join(self.root_dir, "maps", map_str) # If we want to use individual maps
-        map_pth = os.path.join(self.root_dir, map_str) # Just use the concatenated map of boston seaport
-        filename, file_extension = os.path.splitext(map_pth)
-        self.map = np.load(map_pth) if file_extension == '.npy' else np.loadtxt(map_pth, skiprows=1)
+        # map_pth = os.path.join(self.root_dir, map_str) # Just use the concatenated map of boston seaport
+        # filename, file_extension = os.path.splitext(map_pth)
+        # self.map = np.load(map_pth) if file_extension == '.npy' else np.loadtxt(map_pth, skiprows=1)
 
-        # Need to change from stability = 1 to stability = 0
-        # [x y z RCS v_x v_y stable_prob]
-        self.map[:,-1] = 1 - self.map[:,-1]
 
-        ## Discard compensated velocities as features
-        # [x y z RCS stable_prob v_x v_y]
-        self.map = self.map[:, [0,1,2, -1, 3,4,5]]
+        if len(self.map_path):
+            self.use_single_map = True
 
+            map_ = np.loadtxt(self.map_path, skiprows=1)
+            # Need to change from stability = 1 to stability = 0
+            # [x y z RCS v_x v_y stable_prob]
+            map_[:,-1] = 1 - map_[:,-1]
+            ## Discard compensated velocities as features
+            # [x y z RCS stable_prob v_x v_y]
+            map_ = map_[:, [0,1,2, -1, 3,4,5]]
+            self.map = map_
+        else:
+            all_maps = list(self.maps.values())
+            self.map = np.vstack(all_maps)
+
+        
         ## TODO: REMOVE -- Adding for development only
         # dummy_features = np.zeros((len(self.map), 3))
         # self.map = np.hstack([self.map, dummy_features])
         # print("WARNING: USING DUMMY MAP FEATURES")
+
+    def load_maps(self, seq_list):
+        # Iterate over all files in the directory
+        for seq in seq_list:
+            file_path = os.path.join(self.root_dir, 'maps', f'{seq}.asc')
+            map_ = np.loadtxt(file_path, skiprows=1)
+            # Need to change from stability = 1 to stability = 0
+            # [x y z RCS v_x v_y stable_prob]
+            map_[:,-1] = 1 - map_[:,-1]
+            ## Discard compensated velocities as features
+            # [x y z RCS stable_prob v_x v_y]
+            map_ = map_[:, [0,1,2, -1, 3,4,5]]
+            self.maps[seq] = map_
 
     def cash_scans(self, scans_pth, poses_pth, labels_pth, map_tr_pths):
         scans_data = []
