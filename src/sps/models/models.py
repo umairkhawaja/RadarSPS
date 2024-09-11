@@ -20,7 +20,7 @@ class SPSModel(nn.Module):
     def forward(self, coordinates: torch.Tensor, radar_features: torch.Tensor = None):
         coordinates = torch.div(coordinates, self.quantization.type_as(coordinates))
         time_features = 0.5 * torch.ones(len(coordinates), 1).type_as(coordinates)
-        if radar_features:
+        if radar_features is not None:
             features = torch.hstack([time_features, radar_features])
         else:
             features = time_features
