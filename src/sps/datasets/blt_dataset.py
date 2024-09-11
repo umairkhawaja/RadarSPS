@@ -33,18 +33,18 @@ class BacchusModule(LightningDataModule):
         if self.test:
             print('Loading testing data ...')
             test_seqs = self.cfg['DATA']['SPLIT']['TEST']
-            test_scans, test_poses, test_map_tr = self.get_scans_poses(test_seqs)
-            self.test_scans = self.cash_scans(test_scans, test_poses, test_map_tr)
+            test_scans, test_poses, test_labels, test_map_tr = self.get_scans_poses(test_seqs)
+            self.test_scans = self.cash_scans(test_scans, test_poses, test_labels, test_map_tr)
         else:
             print('Loading training data ...')
             train_seqs = self.cfg['DATA']['SPLIT']['TRAIN']
-            train_scans, train_poses, train_map_tr = self.get_scans_poses(train_seqs)
-            self.train_scans = self.cash_scans(train_scans, train_poses, train_map_tr)
+            train_scans, train_poses, train_labels, train_map_tr = self.get_scans_poses(train_seqs)
+            self.train_scans = self.cash_scans(train_scans, train_poses, train_labels, train_map_tr)
 
             print('Loading validating data ...')
             val_seqs = self.cfg['DATA']['SPLIT']['VAL']
-            val_scans, val_poses, val_map_tr = self.get_scans_poses(val_seqs)
-            self.val_scans = self.cash_scans(val_scans, val_poses, val_map_tr)
+            val_scans, val_poses, val_labels, val_map_tr = self.get_scans_poses(val_seqs)
+            self.val_scans = self.cash_scans(val_scans, val_poses, val_labels, val_map_tr)
 
         map_str = self.cfg["TRAIN"]["MAP"]
 
@@ -53,16 +53,23 @@ class BacchusModule(LightningDataModule):
         map_pth = os.path.join(self.root_dir, map_str) # Just use the concatenated map of boston seaport
         filename, file_extension = os.path.splitext(map_pth)
         self.map = np.load(map_pth) if file_extension == '.npy' else np.loadtxt(map_pth, skiprows=1)
-        self.map = self.map[:,:4]
+
         # Need to change from stability = 1 to stability = 0
+        # [x y z stable_prob RCS v_x v_y]
         self.map[:,3] = 1 - self.map[:,3]
 
-    def cash_scans(self, scans_pth, poses_pth, map_tr_pths):
+        ## TODO: REMOVE -- Adding for development only
+        dummy_features = np.zeros((len(self.map), 3))
+        self.map = np.hstack([self.map, dummy_features])
+        print("WARNING: USING DUMMY MAP FEATURES")
+
+    def cash_scans(self, scans_pth, poses_pth, labels_pth, map_tr_pths):
         scans_data = []
         # Zip the two lists together and iterate with tqdm
-        for scan_pth, pose_pth, map_tr_pth in tqdm(zip(scans_pth, poses_pth, map_tr_pths), total=len(scans_pth)):
+        for scan_pth, pose_pth, label_pth, map_tr_pth in tqdm(zip(scans_pth, poses_pth, labels_pth, map_tr_pths), total=len(scans_pth)):
             # Load scan and poses:
             scan_data = np.load(scan_pth)
+            labels_data = np.load(label_pth)
             pose_data = np.loadtxt(pose_pth, delimiter=',')
             # Load map transformation 
             # map_transform = np.loadtxt(map_tr_pth, delimiter=',')
@@ -73,6 +80,10 @@ class BacchusModule(LightningDataModule):
             # (2) Second we align the transformed scan to the map using map_transform matrix
             scan_data[:,:3] = util.transform_point_cloud(scan_data[:,:3], pose_data)
             scan_data[:,:3] = util.transform_point_cloud(scan_data[:,:3], map_transform)
+            
+            scan_features = scan_data[:, [4,5,6]] # RCS v_x v_y
+            
+            scan_data = np.hstack([scan_data[:,:3], labels_data.reshape(-1, 1), scan_features])
 
             scans_data.append(scan_data)
 
@@ -82,26 +93,30 @@ class BacchusModule(LightningDataModule):
     def get_scans_poses(self, seqs):
         seq_scans = []
         seq_poses = []
+        seq_labels = []
         map_transform = []  #path to the transformation matrix that is used to align 
                             #the transformed scans (using their poses) to the base map
 
         for sequence in seqs:
             scans_dir = os.path.join(self.root_dir, "sequence", sequence, "scans")
             poses_dir = os.path.join(self.root_dir, "sequence", sequence, "poses")
+            labels_dir = os.path.join(self.root_dir, "sequence", sequence, "labels")
 
-            scans = sorted([os.path.join(scans_dir, file) for file in os.listdir(scans_dir)])
-            poses = sorted([os.path.join(poses_dir, file) for file in os.listdir(poses_dir)])
+            scans = sorted([os.path.join(scans_dir, file) for file in os.listdir(scans_dir)], key=lambda f: float(''.join(filter(lambda x: x.isdigit() or x == '.', f.split('.npy')[0]))))
+            poses = sorted([os.path.join(poses_dir, file) for file in os.listdir(poses_dir)], key=lambda f: float(''.join(filter(lambda x: x.isdigit() or x == '.', f.split('.txt')[0]))))
+            labels = sorted([os.path.join(labels_dir, file) for file in os.listdir(labels_dir)], key=lambda f: float(''.join(filter(lambda x: x.isdigit() or x == '.', f.split('.npy')[0]))))
 
             map_transform_pth = os.path.join(self.root_dir, "sequence", sequence, "map_transform")
             transform_paths = [map_transform_pth] * len(scans)
 
             seq_scans.extend(scans)
             seq_poses.extend(poses)
+            seq_labels.extend(labels)
             map_transform.extend(transform_paths)
 
         assert len(seq_scans) == len(seq_poses) == len(map_transform), 'The length of those arrays should be the same!'
 
-        return seq_scans, seq_poses, map_transform
+        return seq_scans, seq_poses, seq_labels, map_transform
 
 
     def setup(self, stage=None):
@@ -177,13 +192,23 @@ class BacchusModule(LightningDataModule):
     @staticmethod
     def collate_fn(batch):
         tensor_batch = None
-        
-        for i, (scan_submap_data) in enumerate(batch):
+        scan_submap_features = None
+        ## MinkowskiEngine expects [x y z t b] --> 4 + 1 dims
+
+        for i, (data) in enumerate(batch):
+            if isinstance(data, tuple):
+                scan_submap_data, scan_submap_features = data
+            else:
+                scan_submap_data = data
+
             ones = torch.ones(len(scan_submap_data), 1, dtype=scan_submap_data.dtype)
             tensor = torch.hstack([i * ones, scan_submap_data])
             tensor_batch = tensor if tensor_batch is None else torch.vstack([tensor_batch, tensor])
 
-        return tensor_batch
+        if scan_submap_features is not None:
+            return tensor_batch, scan_submap_features
+        else:
+            return tensor_batch
 
 #####################################################################
 class BacchusDataset(Dataset):
@@ -215,7 +240,12 @@ class BacchusDataset(Dataset):
         scan_data = self.scans[idx]
 
         scan_points = torch.tensor(scan_data[:, :3]).to(torch.float32).reshape(-1, 3)
-        scan_labels = torch.tensor(scan_data[:, 3]).to(torch.float32).reshape(-1, 1)
+        scan_labels = 1 - torch.tensor(scan_data[:, 3]).to(torch.float32).reshape(-1, 1) # convert from stable:1 to stable:0
+        scan_features = torch.tensor(scan_data[:, [4,5,6]]).to(torch.float32).reshape(-1, 3) # RCS v_x v_y
+        
+        # Add features
+        # if self.cfg['MODEL']['RADAR_FEATURES']:
+            # scan_points = torch.hstack([scan_points, scan_features])
         
         # Bind time stamp to scan points
         scan_points = self.add_timestamp(scan_points, util.SCAN_TIMESTAMP)
@@ -228,6 +258,7 @@ class BacchusDataset(Dataset):
         kd_tree_scan = cKDTree(scan_data[:,:3])
         submap_idx = self.select_closest_points(kd_tree_scan, self.kd_tree_target)
         submap_points = torch.tensor(self.map[submap_idx, :3]).to(torch.float32).reshape(-1, 3)
+        submap_features = torch.tensor(self.map[submap_idx, 3:6]).to(torch.float32).reshape(-1, 3)
 
         # Submap points labels are not important, so we just create a tensor of ones
         submap_labels = torch.ones(submap_points.shape[0], 1)
@@ -238,14 +269,18 @@ class BacchusDataset(Dataset):
         # Bind points label in the same tensor 
         submap_points = torch.hstack([submap_points, submap_labels])
 
-        # Bine scans and map in the same tensor 
+        # Bind scans and map in the same tensor 
         scan_submap_data = torch.vstack([scan_points, submap_points])
+        scan_submap_features = torch.vstack([scan_features, submap_features])
 
         # Augment the points 
         if self.augment:
             scan_submap_data[:,:3] = self.augment_data(scan_submap_data[:,:3])
 
-        return scan_submap_data
+        if self.cfg['MODEL']['RADAR_FEATURES']:
+            return (scan_submap_data, scan_submap_features)
+        else:
+            return scan_submap_data
 
     def add_timestamp(self, data, stamp):
         ones = torch.ones(len(data), 1, dtype=data.dtype)
