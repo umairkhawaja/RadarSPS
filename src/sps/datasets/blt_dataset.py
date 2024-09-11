@@ -55,13 +55,17 @@ class BacchusModule(LightningDataModule):
         self.map = np.load(map_pth) if file_extension == '.npy' else np.loadtxt(map_pth, skiprows=1)
 
         # Need to change from stability = 1 to stability = 0
-        # [x y z stable_prob RCS v_x v_y]
-        self.map[:,3] = 1 - self.map[:,3]
+        # [x y z RCS v_x v_y stable_prob]
+        self.map[:,-1] = 1 - self.map[:,-1]
+
+        ## Discard compensated velocities as features
+        # [x y z RCS stable_prob v_x v_y]
+        self.map = self.map[:, [0,1,2, -1, 3,4,5]]
 
         ## TODO: REMOVE -- Adding for development only
-        dummy_features = np.zeros((len(self.map), 3))
-        self.map = np.hstack([self.map, dummy_features])
-        print("WARNING: USING DUMMY MAP FEATURES")
+        # dummy_features = np.zeros((len(self.map), 3))
+        # self.map = np.hstack([self.map, dummy_features])
+        # print("WARNING: USING DUMMY MAP FEATURES")
 
     def cash_scans(self, scans_pth, poses_pth, labels_pth, map_tr_pths):
         scans_data = []
@@ -81,7 +85,7 @@ class BacchusModule(LightningDataModule):
             scan_data[:,:3] = util.transform_point_cloud(scan_data[:,:3], pose_data)
             scan_data[:,:3] = util.transform_point_cloud(scan_data[:,:3], map_transform)
             
-            scan_features = scan_data[:, [4,5,6]] # RCS v_x v_y
+            scan_features = scan_data[:, [3,4,5]] # RCS v_x v_y
             
             scan_data = np.hstack([scan_data[:,:3], labels_data.reshape(-1, 1), scan_features])
 
@@ -241,7 +245,7 @@ class BacchusDataset(Dataset):
 
         scan_points = torch.tensor(scan_data[:, :3]).to(torch.float32).reshape(-1, 3)
         scan_labels = 1 - torch.tensor(scan_data[:, 3]).to(torch.float32).reshape(-1, 1) # convert from stable:1 to stable:0
-        scan_features = torch.tensor(scan_data[:, [4,5,6]]).to(torch.float32).reshape(-1, 3) # RCS v_x v_y
+        scan_features = torch.tensor(scan_data[:, [3,4,5]]).to(torch.float32).reshape(-1, 3) # RCS v_x v_y
         
         # Add features
         # if self.cfg['MODEL']['RADAR_FEATURES']:
