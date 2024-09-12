@@ -335,7 +335,8 @@ class BacchusDataset(Dataset):
     def select_closest_points(self, kd_tree_ref, kd_tree_target):
         start_time = time.time()
 
-        indexes = kd_tree_ref.query_ball_tree(kd_tree_target, self.cfg["MODEL"]["VOXEL_SIZE"])
+        # indexes = kd_tree_ref.query_ball_tree(kd_tree_target, self.cfg["MODEL"]["VOXEL_SIZE"])
+        indexes = kd_tree_ref.query_ball_tree(kd_tree_target, 1)
         
         # Merge the indexes into one array using numpy.concatenate and list comprehension
         merged_indexes = np.concatenate([idx_list for idx_list in indexes])

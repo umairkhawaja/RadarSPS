@@ -35,7 +35,7 @@
 #   THRESHOLD: 0.84
 
 EXPERIMENT:
-  ID: NUSCENES_TEST_0218_MAP-0162_map-parsing
+  ID: NUSCENES_TEST_0218_MAP-0162_map-parsing_high_kdtree_thresh
 
 ##Data
 DATA:
