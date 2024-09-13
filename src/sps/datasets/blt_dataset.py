@@ -230,7 +230,7 @@ class BacchusModule(LightningDataModule):
     @staticmethod
     def collate_fn(batch):
         tensor_batch = None
-        scan_submap_features = None
+        feature_tensor_batch = None
         ## MinkowskiEngine expects [x y z t b] --> 4 + 1 dims
 
         for i, (data) in enumerate(batch):
@@ -238,13 +238,23 @@ class BacchusModule(LightningDataModule):
                 scan_submap_data, scan_submap_features = data
             else:
                 scan_submap_data = data
+                scan_submap_features = None
 
+            # Create the tensor with an additional dimension for the batch index
             ones = torch.ones(len(scan_submap_data), 1, dtype=scan_submap_data.dtype)
             tensor = torch.hstack([i * ones, scan_submap_data])
             tensor_batch = tensor if tensor_batch is None else torch.vstack([tensor_batch, tensor])
 
-        if scan_submap_features is not None:
-            return tensor_batch, scan_submap_features
+            # Stack scan_submap_features if they exist
+            if scan_submap_features is not None:
+                # Create the tensor with an additional dimension for the batch index
+                # ones = torch.ones(len(scan_submap_features), 1, dtype=scan_submap_features.dtype)
+                # feature_tensor = torch.hstack([i * ones, scan_submap_features])
+                feature_tensor = scan_submap_features
+                feature_tensor_batch = feature_tensor if feature_tensor_batch is None else torch.vstack([feature_tensor_batch, feature_tensor])
+
+        if feature_tensor_batch is not None:
+            return tensor_batch, feature_tensor_batch
         else:
             return tensor_batch
 
