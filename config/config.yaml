@@ -542,14 +542,14 @@ DATA:
     - scene-0134
     - scene-0428
 EXPERIMENT:
-  ID: Nuscenes-ICPMaps-NoAugs-RadarFeatures
+  ID: Nuscenes-ICPMaps-Augs-RadarFeatures
 FILTER:
   THRESHOLD: 0.84
 MODEL:
   RADAR_FEATURES: true
   VOXEL_SIZE: 0.1
 TRAIN:
-  AUGMENTATION: false
+  AUGMENTATION: true
   BATCH_SIZE: 32
   LR: 0.001
   LR_DECAY: 0.99
