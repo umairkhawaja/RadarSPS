@@ -306,7 +306,7 @@ class BacchusDataset(Dataset):
         kd_tree_scan = cKDTree(scan_data[:,:3])
         submap_idx = self.select_closest_points(kd_tree_scan, self.kd_tree_target)
         submap_points = torch.tensor(self.map[submap_idx, :3]).to(torch.float32).reshape(-1, 3)
-        submap_features = torch.tensor(self.map[submap_idx, 3:6]).to(torch.float32).reshape(-1, 3)
+        submap_features = torch.tensor(self.map[submap_idx, 4:7]).to(torch.float32).reshape(-1, 3)
 
         # Submap points labels are not important, so we just create a tensor of ones
         submap_labels = torch.ones(submap_points.shape[0], 1)
