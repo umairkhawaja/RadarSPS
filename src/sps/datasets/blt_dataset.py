@@ -289,7 +289,7 @@ class BacchusDataset(Dataset):
 
         scan_points = torch.tensor(scan_data[:, :3]).to(torch.float32).reshape(-1, 3)
         scan_labels = 1 - torch.tensor(scan_data[:, 3]).to(torch.float32).reshape(-1, 1) # convert from stable:1 to stable:0
-        scan_features = torch.tensor(scan_data[:, [3,4,5]]).to(torch.float32).reshape(-1, 3) # RCS v_x v_y
+        scan_features = torch.tensor(scan_data[:, [4,5,6]]).to(torch.float32).reshape(-1, 3) # RCS v_x v_y
         
         # Add features
         # if self.cfg['MODEL']['RADAR_FEATURES']:
