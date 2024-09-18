@@ -137,7 +137,7 @@ class BacchusModule(LightningDataModule):
 
         for sequence in seqs:
             scans_dir = os.path.join(self.root_dir, "sequence", sequence, self.cfg['scans_dir'])
-            poses_dir = os.path.join(self.root_dir, "sequence", sequence, "poses")
+            poses_dir = os.path.join(self.root_dir, "sequence", sequence, self.cfg['poses_dir'])
             labels_dir = os.path.join(self.root_dir, "sequence", sequence, self.cfg['labels_dir'])
 
             scans = sorted([os.path.join(scans_dir, file) for file in os.listdir(scans_dir)], key=lambda f: float(''.join(filter(lambda x: x.isdigit() or x == '.', f.split('.npy')[0]))))

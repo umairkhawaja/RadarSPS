@@ -15,7 +15,8 @@ TRAIN:
   MAX_EPOCH: 100
   WEIGHT_DECAY: 0.0001
 
-maps_dir: local_maps_dpr
+poses_dir: local_poses
+maps_dir: local_maps
 scans_dir: scans
 labels_dir: labels
 
