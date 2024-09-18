@@ -91,7 +91,7 @@ class BacchusModule(LightningDataModule):
     def load_maps(self, seq_list):
         # Iterate over all files in the directory
         for seq in seq_list:
-            file_path = os.path.join(self.root_dir, 'maps', f'{seq}.asc')
+            file_path = os.path.join(self.root_dir, self.cfg['maps_dir'], f'{seq}.asc')
             map_ = np.loadtxt(file_path, skiprows=1)
             # Need to change from stability = 1 to stability = 0
             # [x y z RCS v_x v_y stable_prob]
@@ -136,9 +136,9 @@ class BacchusModule(LightningDataModule):
                             #the transformed scans (using their poses) to the base map
 
         for sequence in seqs:
-            scans_dir = os.path.join(self.root_dir, "sequence", sequence, "scans")
+            scans_dir = os.path.join(self.root_dir, "sequence", sequence, self.cfg['scans_dir'])
             poses_dir = os.path.join(self.root_dir, "sequence", sequence, "poses")
-            labels_dir = os.path.join(self.root_dir, "sequence", sequence, "labels")
+            labels_dir = os.path.join(self.root_dir, "sequence", sequence, self.cfg['labels_dir'])
 
             scans = sorted([os.path.join(scans_dir, file) for file in os.listdir(scans_dir)], key=lambda f: float(''.join(filter(lambda x: x.isdigit() or x == '.', f.split('.npy')[0]))))
             poses = sorted([os.path.join(poses_dir, file) for file in os.listdir(poses_dir)], key=lambda f: float(''.join(filter(lambda x: x.isdigit() or x == '.', f.split('.txt')[0]))))
