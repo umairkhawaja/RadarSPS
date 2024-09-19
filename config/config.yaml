@@ -1,5 +1,5 @@
 EXPERIMENT:
-  ID: Nuscenes-LocalMaps-NoAugs-RadarFeatures
+  ID: Nuscenes-MapsDPR-NoAugs-RadarFeatures
 FILTER:
   THRESHOLD: 0.84
 MODEL:
@@ -15,8 +15,8 @@ TRAIN:
   MAX_EPOCH: 100
   WEIGHT_DECAY: 0.0001
 
-poses_dir: local_poses
-maps_dir: local_maps
+poses_dir: poses
+maps_dir: maps_dpr
 scans_dir: scans
 labels_dir: labels
 

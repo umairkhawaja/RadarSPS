@@ -4,6 +4,7 @@ import os
 import yaml
 import time
 import torch
+import open3d as o3d
 import random
 import numpy as np
 from tqdm import tqdm
@@ -31,6 +32,10 @@ class BacchusModule(LightningDataModule):
         self.map_path = cfg['TRAIN']['MAP']
         self.use_single_map = False
         self.maps = {}
+
+        local_set = 'local' in self.cfg['maps_dir'] or 'local' in self.cfg['poses_dir']
+        if local_set:
+            raise Exception("Local coordinate system is not implemented in SPS")
 
 
 
@@ -75,12 +80,29 @@ class BacchusModule(LightningDataModule):
             # [x y z RCS v_x v_y stable_prob]
             map_[:,-1] = 1 - map_[:,-1]
             ## Discard compensated velocities as features
-            # [x y z RCS stable_prob v_x v_y]
+            # [x y z stable_prob RCS v_x v_y]
             map_ = map_[:, [0,1,2, -1, 3,4,5]]
             self.map = map_
         else:
             all_maps = list(self.maps.values())
             self.map = np.vstack(all_maps)
+        
+        ## Voxel Downsample 
+        # Create an Open3D point cloud object
+        point_cloud = o3d.geometry.PointCloud()
+        point_cloud.points = o3d.utility.Vector3dVector(self.map[:, :3])  # Use only [x, y, z] for point cloud
+        
+        # Downsample the point cloud
+        ref_map_sampled = point_cloud.voxel_down_sample(voxel_size=0.04)
+        map_points = np.asarray(ref_map_sampled.points)
+        
+        # Find the closest original points to the downsampled points
+        # Use KDTree for efficient nearest-neighbor search
+        tree = cKDTree(self.map[:, :3])
+        _, indices = tree.query(map_points)
+        
+        # Store the downsampled point cloud with features
+        self.map = self.map[indices]
 
         
         ## TODO: REMOVE -- Adding for development only
@@ -97,7 +119,7 @@ class BacchusModule(LightningDataModule):
             # [x y z RCS v_x v_y stable_prob]
             map_[:,-1] = 1 - map_[:,-1]
             ## Discard compensated velocities as features
-            # [x y z RCS stable_prob v_x v_y]
+            # [x y z stable_prob RCS v_x v_y]
             map_ = map_[:, [0,1,2, -1, 3,4,5]]
             self.maps[seq] = map_
 
@@ -164,19 +186,21 @@ class BacchusModule(LightningDataModule):
                 self.cfg, 
                 self.test_scans, 
                 self.map, 
+                split='TEST'
             )
         else:
             train_set = BacchusDataset(
                 self.cfg, 
                 self.train_scans, 
                 self.map, 
-                split='train'
+                split='TRAIN'
             )
 
             val_set = BacchusDataset(
                 self.cfg, 
                 self.val_scans, 
                 self.map,
+                split='VAL'
             )
 
         ########## Generate dataloaders and iterables
@@ -262,7 +286,7 @@ class BacchusModule(LightningDataModule):
 class BacchusDataset(Dataset):
     """Dataset class for point cloud prediction"""
 
-    def __init__(self, cfg, scans, pc_map, split = None):
+    def __init__(self, cfg, scans, pc_map, split):
         self.cfg = cfg
         self.scans = scans
 
@@ -274,7 +298,7 @@ class BacchusDataset(Dataset):
         # Note: If the batch size exceeds 1, using the ME pruning function will result in an error; hence, kd_tree was employed instead.
         self.kd_tree_target = cKDTree(self.map[:,:3])
 
-        self.augment = self.cfg["TRAIN"]["AUGMENTATION"] and split == "train"
+        self.augment = self.cfg["TRAIN"]["AUGMENTATION"] and split == "TRAIN"
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -291,10 +315,6 @@ class BacchusDataset(Dataset):
         scan_labels = 1 - torch.tensor(scan_data[:, 3]).to(torch.float32).reshape(-1, 1) # convert from stable:1 to stable:0
         scan_features = torch.tensor(scan_data[:, [4,5,6]]).to(torch.float32).reshape(-1, 3) # RCS v_x v_y
         
-        # Add features
-        # if self.cfg['MODEL']['RADAR_FEATURES']:
-            # scan_points = torch.hstack([scan_points, scan_features])
-        
         # Bind time stamp to scan points
         scan_points = self.add_timestamp(scan_points, util.SCAN_TIMESTAMP)
         
@@ -306,8 +326,10 @@ class BacchusDataset(Dataset):
         kd_tree_scan = cKDTree(scan_data[:,:3])
         submap_idx = self.select_closest_points(kd_tree_scan, self.kd_tree_target)
         submap_points = torch.tensor(self.map[submap_idx, :3]).to(torch.float32).reshape(-1, 3)
+        submap_labels = torch.tensor(self.map[submap_idx, 3]).to(torch.float32).reshape(-1, 1)
+        
         submap_features = torch.tensor(self.map[submap_idx, 4:7]).to(torch.float32).reshape(-1, 3)
-
+        # print(submap_features.shape)
         # Submap points labels are not important, so we just create a tensor of ones
         submap_labels = torch.ones(submap_points.shape[0], 1)
 
@@ -345,8 +367,7 @@ class BacchusDataset(Dataset):
     def select_closest_points(self, kd_tree_ref, kd_tree_target):
         start_time = time.time()
 
-        # indexes = kd_tree_ref.query_ball_tree(kd_tree_target, self.cfg["MODEL"]["VOXEL_SIZE"])
-        indexes = kd_tree_ref.query_ball_tree(kd_tree_target, 1)
+        indexes = kd_tree_ref.query_ball_tree(kd_tree_target, self.cfg["MODEL"]["VOXEL_SIZE"])
         
         # Merge the indexes into one array using numpy.concatenate and list comprehension
         merged_indexes = np.concatenate([idx_list for idx_list in indexes])
