@@ -31,7 +31,7 @@ def main():
         print(f"\nProcessing experiment: {experiment}")
 
         # Define paths
-        exp_dir = os.path.join(logs_dir, experiment, 'version_1')
+        exp_dir = os.path.join(logs_dir, experiment, 'version_0')
         weights_dir = os.path.join(exp_dir, 'checkpoints')
         config_path = os.path.join(exp_dir, 'hparams.yaml')
 
