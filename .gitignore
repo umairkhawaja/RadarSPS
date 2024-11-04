@@ -148,3 +148,5 @@ scripts/lightning_logs/*
 *.ckpt
 kiss_odom_ws/*
 KNN_CUDA/*
+*.png
+*.jpg

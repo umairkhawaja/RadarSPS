@@ -312,8 +312,8 @@ class BacchusDataset(Dataset):
         scan_data = self.scans[idx]
 
         scan_points = torch.tensor(scan_data[:, :3]).to(torch.float32).reshape(-1, 3)
-        scan_labels = 1 - torch.tensor(scan_data[:, 3]).to(torch.float32).reshape(-1, 1) # convert from stable:1 to stable:0
-        scan_features = torch.tensor(scan_data[:, [4,5,6]]).to(torch.float32).reshape(-1, 3) # RCS v_x v_y
+        scan_labels = 1 - torch.tensor(scan_data[:, 3]).to(torch.float32).reshape(-1, 1)  # convert from stable:1 to stable:0
+        scan_features = torch.tensor(scan_data[:, [4,5,6]]).to(torch.float32).reshape(-1, 3)  # RCS v_x v_y
         
         # Bind time stamp to scan points
         scan_points = self.add_timestamp(scan_points, util.SCAN_TIMESTAMP)
@@ -323,13 +323,12 @@ class BacchusDataset(Dataset):
 
         # Find the closest map to scan points (submap points), i.e. prune map points based on scan points 
         # Note: this will find the closest points that are within the voxel size.
-        kd_tree_scan = cKDTree(scan_data[:,:3])
+        kd_tree_scan = cKDTree(scan_data[:, :3])
         submap_idx = self.select_closest_points(kd_tree_scan, self.kd_tree_target)
         submap_points = torch.tensor(self.map[submap_idx, :3]).to(torch.float32).reshape(-1, 3)
         submap_labels = torch.tensor(self.map[submap_idx, 3]).to(torch.float32).reshape(-1, 1)
         
         submap_features = torch.tensor(self.map[submap_idx, 4:7]).to(torch.float32).reshape(-1, 3)
-        # print(submap_features.shape)
         # Submap points labels are not important, so we just create a tensor of ones
         submap_labels = torch.ones(submap_points.shape[0], 1)
 
@@ -343,9 +342,47 @@ class BacchusDataset(Dataset):
         scan_submap_data = torch.vstack([scan_points, submap_points])
         scan_submap_features = torch.vstack([scan_features, submap_features])
 
+        # Add plotting code
+        if self.cfg.get('plotting_enabled', True):
+            import matplotlib.pyplot as plt
+
+            # Plot scan_points
+            scan_points_np = scan_points[:, :3].cpu().numpy()
+            plt.figure(figsize=(8, 6))
+            plt.scatter(scan_points_np[:, 0], scan_points_np[:, 1], s=3, c='blue', label='Scan Points')
+            plt.xlabel('X')
+            plt.ylabel('Y')
+            plt.title(f'Scan Points Index {idx}')
+            plt.legend()
+            plt.savefig(f'scan_points_idx_{idx}.png')
+            plt.close()
+
+
+            scan_points_np = scan_points[:, :3].cpu().numpy()
+            plt.figure(figsize=(8, 6))
+            plt.scatter(scan_points_np[:, 0], scan_points_np[:, 1], s=3, cmap='RdYlGn', c=1-scan_labels, label='Scan Points')
+            plt.xlabel('X')
+            plt.ylabel('Y')
+            plt.title(f'Scan Points Index {idx}')
+            plt.legend()
+            plt.savefig(f'pred_scan_points_idx_{idx}.png')
+            plt.close()
+
+            # Plot scan+submap points together
+            submap_points_np = submap_points[:, :3].cpu().numpy()
+            plt.figure(figsize=(8, 6))
+            plt.scatter(scan_points_np[:, 0], scan_points_np[:, 1], s=2, c='blue', label='Scan Points')
+            plt.scatter(submap_points_np[:, 0], submap_points_np[:, 1], s=5, c='orange', label='Submap Points')
+            plt.xlabel('X')
+            plt.ylabel('Y')
+            plt.title(f'Scan and Submap Points Index {idx}')
+            plt.legend()
+            plt.savefig(f'scan_submap_points_idx_{idx}.png')
+            plt.close()
+
         # Augment the points 
         if self.augment:
-            scan_submap_data[:,:3] = self.augment_data(scan_submap_data[:,:3])
+            scan_submap_data[:, :3] = self.augment_data(scan_submap_data[:, :3])
 
         if self.cfg['MODEL']['RADAR_FEATURES']:
             return (scan_submap_data, scan_submap_features)
@@ -368,7 +405,7 @@ class BacchusDataset(Dataset):
         start_time = time.time()
 
         indexes = kd_tree_ref.query_ball_tree(kd_tree_target, self.cfg["MODEL"]["VOXEL_SIZE"])
-        # indexes = kd_tree_ref.query_ball_tree(kd_tree_target, 1)
+        # indexes = kd_tree_ref.query_ball_tree(kd_tree_target, 2)
         
         # Merge the indexes into one array using numpy.concatenate and list comprehension
         merged_indexes = np.concatenate([idx_list for idx_list in indexes])
