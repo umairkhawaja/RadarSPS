@@ -343,7 +343,7 @@ class BacchusDataset(Dataset):
         scan_submap_features = torch.vstack([scan_features, submap_features])
 
         # Add plotting code
-        if self.cfg.get('plotting_enabled', True):
+        if self.cfg.get('plotting_enabled', False):
             import matplotlib.pyplot as plt
 
             # Plot scan_points
